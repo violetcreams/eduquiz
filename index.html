@@ -1,1 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>EduQuiz – Ages 12+</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b1220; --card:#121a2b; --muted:#7b8aa1; --text:#e8edf6;
+      --accent:#4fd1c5; --accent-2:#7aa4ff; --danger:#ff6b6b; --ok:#74d680;
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Arial;
+      background:linear-gradient(180deg,#0b1220 0%,#111827 100%);
+      color:var(--text); min-height:100dvh; display:flex; align-items:center; justify-content:center; padding:24px;
+    }
+    .app{width:min(900px,100%); background:var(--card); border-radius:var(--radius);
+      box-shadow:0 20px 60px rgba(0,0,0,.35); padding:24px}
+    header{display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px}
+    h1{font-size:1.25rem; margin:0}
+    .badge{background:rgba(127,156,255,.15); border:1px solid rgba(127,156,255,.35);
+      color:#cfe0ff; padding:6px 10px; border-radius:999px; font-size:.8rem}
+    .row{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .card{background:#0e1626; border:1px solid #1d2a46; border-radius:var(--radius); padding:16px}
+    label{display:block; font-size:.9rem; color:var(--muted); margin-bottom:6px}
+    select, button, .btn{
+      width:100%; padding:12px 14px; border-radius:12px; border:1px solid #223152;
+      background:#0c1424; color:var(--text); font-size:1rem;
+    }
+    select:focus, button:focus{outline:2px solid var(--accent)}
+    .primary{background:linear-gradient(90deg,var(--accent),var(--accent-2)); border:none; font-weight:600}
+    .secondary{background:#0c1424}
+    .hidden{display:none !important}
+    .progress{height:8px; background:#0c1424; border-radius:999px; overflow:hidden; margin:16px 0}
+    .bar{height:100%; width:0%; background:linear-gradient(90deg,#7aa4ff,#4fd1c5)}
+    .question{font-size:1.15rem; margin:6px 0 12px}
+    .options{display:grid; gap:10px; margin-top:8px}
+    .option{
+      text-align:left; cursor:pointer; border:1px solid #223152; background:#0c1424;
+      transition:transform .05s ease;
+    }
+    .option:hover{transform:translateY(-1px)}
+    .option[aria-pressed="true"]{border-color:var(--accent-2); box-shadow:0 0 0 2px rgba(122,164,255,.25) inset}
+    .status{font-size:.95rem; color:var(--muted)}
+    .pill{display:inline-block; font-size:.8rem; padding:4px 8px; border-radius:999px; border:1px solid #223152; color:#b9c7dc}
+    .explanation{margin-top:10px; padding:10px; background:#0b1323; border:1px dashed #223152; border-radius:10px; color:#cdd8ea}
+    .footer{display:flex; gap:10px; margin-top:16px}
+    .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .center{text-align:center}
+    .score-big{font-size:2.25rem; font-weight:800; margin:4px 0 8px}
+    .good{color:var(--ok)} .bad{color:var(--danger)}
+    @media (max-width:700px){ .row{grid-template-columns:1fr} .grid-2{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <main class="app" role="main" aria-live="polite">
+    <header>
+      <h1>EduQuiz <span class="badge">Educational • Ages 12+</span></h1>
+      <div class="pill" id="statusPill" aria-hidden="true">Not started</div>
+    </header>
 
+    <!-- SETUP SCREEN -->
+    <section id="screen-setup" class="card" aria-labelledby="setup-title">
+      <h2 id="setup-title" class="hidden">Setup</h2>
+      <div class="row">
+        <div>
+          <label for="subject">Subject</label>
+          <select id="subject">
+            <option value="Science">Science</option>
+            <option value="History">History</option>
+            <option value="Maths">Maths</option>
+            <option value="English">English</option>
+          </select>
+        </div>
+        <div>
+          <label for="age">Age group</label>
+          <select id="age">
+            <option value="12-14">12–14</option>
+            <option value="15-16">15–16</option>
+            <option value="17+">17+</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top:12px">
+        <div>
+          <label for="num">Questions</label>
+          <select id="num">
+            <option>10</option>
+            <option>12</option>
+            <option>15</option>
+          </select>
+        </div>
+        <div>
+          <label for="feedback">Feedback timing</label>
+          <select id="feedback">
+            <option value="end">At the end</option>
+            <option value="instant">After each question</option>
+          </select>
+        </div>
+      </div>
+      <div class="footer">
+        <button id="startBtn" class="primary">Start Quiz</button>
+        <button id="sampleBtn" class="secondary" title="Loads a science sample set">Load Sample Set</button>
+      </div>
+    </section>
+
+    <!-- PLAY SCREEN -->
+    <section id="screen-play" class="card hidden" aria-labelledby="play-title">
+      <h2 id="play-title" class="hidden">Quiz</h2>
+      <div class="status">
+        <span id="crumbs" class="pill">Question 1 of 10</span>
+        &nbsp;•&nbsp;<span id="subjectAge" class="pill"></span>
+      </div>
+      <div class="progress" aria-hidden="true"><div id="bar" class="bar"></div></div>
+      <div id="qText" class="question">Loading…</div>
+      <div id="options" class="options" role="group" aria-label="Answer choices"></div>
+      <div id="explainBox" class="explanation hidden"></div>
+      <div class="footer">
+        <button id="prevBtn" class="secondary">Back</button>
+        <button id="nextBtn" class="primary">Next</button>
+      </div>
+    </section>
+
+    <!-- RESULT SCREEN -->
+    <section id="screen-result" class="card hidden" aria-labelledby="result-title">
+      <h2 id="result-title" class="center">Results</h2>
+      <p class="center"><span id="resultSubject" class="pill"></span></p>
+      <p class="center score-big"><span id="scoreNum">0</span>/<span id="scoreDen">0</span></p>
+      <p class="center" id="scoreMsg"></p>
+      <div id="review" class="card" style="margin-top:12px">
+        <h3 style="margin-top:0">Review</h3>
+        <div id="reviewList"></div>
+      </div>
+      <div class="footer">
+        <button id="againBtn" class="secondary">Play Again</button>
+        <button id="homeBtn" class="primary">Home</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // --- Minimal sample bank (extend as needed) ---
+    const BANK = [
+      {id:"sci12-01",subject:"Science",ageGroup:"12-14",
+        question:"Which planet is known as the Red Planet?",
+        options:["Venus","Mars","Jupiter","Saturn"], answerIndex:1,
+        explanation:"Iron oxide on Mars’ surface gives it a reddish colour."},
+      {id:"sci12-02",subject:"Science",ageGroup:"12-14",
+        question:"Water boils at what temperature at sea level?",
+        options:["50°C","100°C","150°C","212°C"], answerIndex:1,
+        explanation:"100°C equals 212°F at sea level."},
+      {id:"his15-01",subject:"History",ageGroup:"15-16",
+        question:"The Treaty of Versailles formally ended which war?",
+        options:["WWI","WWII","Crimean War","Cold War"], answerIndex:0,
+        explanation:"Signed in 1919, it ended World War I."},
+      {id:"mat17-01",subject:"Maths",ageGroup:"17+",
+        question:"Solve for x: 2x + 6 = 14",
+        options:["x=3","x=4","x=5","x=6"], answerIndex:1,
+        explanation:"2x=8 → x=4."},
+      {id:"eng12-01",subject:"English",ageGroup:"12-14",
+        question:"Which sentence uses the correct form of 'their/there/they’re'?",
+        options:[
+          "There going to the park with they’re friends.",
+          "They’re going to the park with their friends.",
+          "Their going to the park with there friends.",
+          "They are going to the park with there friends."
+        ], answerIndex:1,
+        explanation:"“They’re” = they are; “their” = possession; “there” = place."
+      }
+    ];
+
+    // --- Utilities ---
+    const $ = sel => document.querySelector(sel);
+    const byId = id => document.getElementById(id);
+    const shuffle = arr => { // Fisher–Yates
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    };
+
+    // --- State ---
+    let state = {
+      subject: "Science",
+      age: "12-14",
+      total: 10,
+      feedback: "end", // "instant"
+      pool: [], // filtered questions
+      order: [],
+      index: 0,
+      selections: [], // selected option indices
+      score: 0
+    };
+
+    // --- Elements ---
+    const screens = {
+      setup: byId("screen-setup"),
+      play: byId("screen-play"),
+      result: byId("screen-result"),
+    };
+    const statusPill = byId("statusPill");
+    const qText = byId("qText");
+    const optionsBox = byId("options");
+    const explainBox = byId("explainBox");
+    const crumbs = byId("crumbs");
+    const bar = byId("bar");
+
+    // --- Screen management ---
+    function show(screen){
+      Object.values(screens).forEach(s => s.classList.add("hidden"));
+      screens[screen].classList.remove("hidden");
+      statusPill.textContent =
+        screen === "setup" ? "Not started" :
+        screen === "play" ? `In progress` :
+        "Completed";
+    }
+
+    // --- Setup interactions ---
+    byId("startBtn").addEventListener("click", startQuiz);
+    byId("sampleBtn").addEventListener("click", () => {
+      byId("subject").value = "Science";
+      byId("age").value = "12-14";
+      byId("num").value = "10";
+      byId("feedback").value = "end";
+    });
+
+    async function startQuiz(){
+      state.subject = byId("subject").value;
+      state.age = byId("age").value;
+      state.total = parseInt(byId("num").value, 10);
+      state.feedback = byId("feedback").value;
+      const pool = BANK.filter(q => q.subject === state.subject && q.ageGroup === state.age);
+      if (pool.length === 0){
+        alert("No questions for that subject/age yet. Try another selection.");
+        return;
+      }
+      state.pool = pool;
+      const indices = pool.map((_, i) => i);
+      state.order = shuffle(indices).slice(0, Math.min(state.total, pool.length));
+      state.index = 0;
+      state.selections = new Array(state.order.length).fill(null);
+      state.score = 0;
+      byId("subjectAge").textContent = `${state.subject} • ${state.age}`;
+      renderQuestion();
+      show("play");
+      byId("prevBtn").disabled = true;
+      byId("nextBtn").textContent = "Next";
+      explainBox.classList.add("hidden");
+    }
+
+    // --- Rendering ---
+    function renderQuestion(){
+      const i = state.order[state.index];
+      const q = state.pool[i];
+      crumbs.textContent = `Question ${state.index + 1} of ${state.order.length}`;
+      bar.style.width = `${(state.index / state.order.length) * 100}%`;
+      qText.textContent = q.question;
+
+      // Build options (don’t mutate original array)
+      optionsBox.innerHTML = "";
+      const opts = q.options.map((text, idx) => ({ text, idx }));
+      // Keep option order but you could shuffle for variety:
+      // shuffle(opts);
+      opts.forEach(({ text, idx }) => {
+        const btn = document.createElement("button");
+        btn.className = "option";
+        btn.setAttribute("role", "button");
+        btn.setAttribute("aria-pressed", state.selections[state.index] === idx ? "true" : "false");
+        btn.textContent = text;
+        btn.addEventListener("click", () => selectOption(idx));
+        btn.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectOption(idx); }
+        });
+        optionsBox.appendChild(btn);
+      });
+
+      // If revisiting, show explanation in instant mode
+      if (state.feedback === "instant" && state.selections[state.index] !== null){
+        explainBox.classList.remove("hidden");
+        explainBox.textContent = buildExplanation(q, state.selections[state.index]);
+      } else {
+        explainBox.classList.add("hidden");
+        explainBox.textContent = "";
+      }
+    }
+
+    function selectOption(idx){
+      state.selections[state.index] = idx;
+      // Toggle pressed styles
+      [...optionsBox.children].forEach((btn, i) =>
+        btn.setAttribute("aria-pressed", i === idx ? "true" : "false")
+      );
+
+      if (state.feedback === "instant"){
+        const q = state.pool[state.order[state.index]];
+        explainBox.classList.remove("hidden");
+        explainBox.textContent = buildExplanation(q, idx);
+      }
+    }
+
+    function buildExplanation(q, sel){
+      const correct = q.answerIndex;
+      const isRight = sel === correct;
+      return (isRight ? "✅ Correct. " : "❌ Incorrect. ") + (q.explanation ?? "");
+    }
+
+    // --- Navigation ---
+    byId("prevBtn").addEventListener("click", () => {
+      if (state.index === 0) return;
+      state.index--;
+      byId("nextBtn").textContent = "Next";
+      byId("prevBtn").disabled = state.index === 0;
+      renderQuestion();
+    });
+
+    byId("nextBtn").addEventListener("click", () => {
+      if (state.selections[state.index] == null){
+        alert("Choose an answer to continue.");
+        return;
+      }
+      const lastIdx = state.order.length - 1;
+      if (state.index < lastIdx){
+        state.index++;
+        byId("prevBtn").disabled = false;
+        if (state.index === lastIdx) byId("nextBtn").textContent = "Finish";
+        renderQuestion();
+      } else {
+        finishQuiz();
+      }
+    });
+
+    // --- Finish & results ---
+    function finishQuiz(){
+      // Calculate score
+      let score = 0;
+      state.order.forEach((qi, pos) => {
+        if (state.selections[pos] === state.pool[qi].answerIndex) score++;
+      });
+      state.score = score;
+
+      // Fill results
+      byId("resultSubject").textContent = `${state.subject} • ${state.age}`;
+      byId("scoreNum").textContent = String(score);
+      byId("scoreDen").textContent = String(state.order.length);
+
+      const pct = Math.round((score / state.order.length) * 100);
+      byId("scoreMsg").innerHTML =
+        pct >= 80 ? `<span class="good">Great job!</span> Keep it up.` :
+        pct >= 50 ? `Nice work — review the explanations and try again.` :
+        `<span class="bad">Keep practising!</span> Explanations below will help.`;
+
+      const review = byId("reviewList");
+      review.innerHTML = "";
+      state.order.forEach((qi, pos) => {
+        const q = state.pool[qi];
+        const sel = state.selections[pos];
+        const correct = q.answerIndex;
+        const div = document.createElement("div");
+        div.style.marginBottom = "12px";
+        div.innerHTML = `
+          <div class="pill" style="margin-bottom:6px">
+            Q${pos+1} • ${sel === correct ? "✅ Correct" : "❌ Incorrect"}
+          </div>
+          <div><strong>${q.question}</strong></div>
+          <div>Your answer: ${q.options[sel] ?? "—"}</div>
+          <div>Correct answer: ${q.options[correct]}</div>
+          <div class="explanation">${q.explanation ?? ""}</div>
+        `;
+        review.appendChild(div);
+      });
+
+      show("result");
+      bar.style.width = "100%";
+    }
+
+    byId("againBtn").addEventListener("click", () => {
+      // Replay same selection
+      startQuiz();
+    });
+    byId("homeBtn").addEventListener("click", () => {
+      show("setup");
+      bar.style.width = "0%";
+    });
+
+    // Keyboard: allow 1–4 to select options quickly
+    document.addEventListener("keydown", (e) => {
+      if (screens.play.classList.contains("hidden")) return;
+      const n = parseInt(e.key, 10);
+      if (!Number.isNaN(n) && n >= 1 && n <= optionsBox.children.length){
+        optionsBox.children[n-1].click();
+      }
+    });
+
+    // Start at setup
+    show("setup");
+  </script>
+</body>
+</html>
